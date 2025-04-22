@@ -111,18 +111,6 @@ function App() {
               <Route
                 path="/dashboard"
                 element={
-                  isDuressSet === null ? (
-                    loadingElement
-                  ) : isDuressSet === false ? (
-                    <Navigate to="/DuressModePasswordSet" />
-                  ) : (
-                    <Dashboard />
-                  )
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
                   !isLoaded ? (
                     loadingElement
                   ) : !isSignedIn ? (
