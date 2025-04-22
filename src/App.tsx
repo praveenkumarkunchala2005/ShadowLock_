@@ -120,7 +120,7 @@ function App() {
                   ) : isDuressSet === false ? (
                     <Navigate to="/Dashboard" replace />
                   ) : (
-                    <DuressMode />
+                    <Dashboard />
                   )
                 }
               />
