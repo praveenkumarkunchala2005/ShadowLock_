@@ -1,8 +1,20 @@
 {
   "name": "vite_react_shadcn_ts",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
+  "description": "",
+  "homepage": "https://github.com/praveenkumarkunchala2005/ShadowLock_#readme",
+  "bugs": {
+    "url": "https://github.com/praveenkumarkunchala2005/ShadowLock_/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/praveenkumarkunchala2005/ShadowLock_.git"
+  },
+  "license": "ISC",
+  "author": "",
   "type": "module",
+  "main": "eslint.config.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

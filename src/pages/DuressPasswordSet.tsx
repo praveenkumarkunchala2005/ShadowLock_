@@ -14,10 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Footer from "@/components/Footer";
-import Navbar from "@/components/Navbar";
-import bcrypt from "bcryptjs";
-import * as CryptoJS from "crypto-js";
 import DashboardNavbar from "@/components/DashboardNavbar";
+import * as CryptoJS from "crypto-js";
 
 const DuressModePasswordSet = () => {
   const { user } = useUser();
@@ -30,6 +28,10 @@ const DuressModePasswordSet = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // For controlling the modal visibility
+  const [showModal, setShowModal] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
   const handlePasswordChange1 = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setDuressPassword1(value);
@@ -38,6 +40,7 @@ const DuressModePasswordSet = () => {
       /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
     setIsSecure(pattern.test(value));
   };
+
   const handlePasswordChange2 = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDuressPassword2(e.target.value);
   };
@@ -66,9 +69,9 @@ const DuressModePasswordSet = () => {
     }
 
     setAddDuress(true);
+    setShowModal(true); // Show the modal while saving
 
     try {
-    //   const hashedPassword = await bcrypt.hash(duressPassword, 10);
       await setDoc(doc(db, "users", user.id), {
         userEmail: user?.primaryEmailAddress?.emailAddress,
         duressMode: false,
@@ -76,13 +79,15 @@ const DuressModePasswordSet = () => {
         salt: generateSalt(),
         id: user.id,
       });
+
       toast({
         title: "Success",
         description: "Duress password set successfully!",
         variant: "default",
       });
 
-      navigate("/dashboard");
+      // Mark success and allow navigation
+      setIsSuccess(true);
     } catch (error) {
       toast({
         title: "Error",
@@ -93,6 +98,12 @@ const DuressModePasswordSet = () => {
     }
 
     setAddDuress(false);
+  };
+
+  const handleNavigate = () => {
+    if (isSuccess) {
+      navigate("/dashboard");
+    }
   };
 
   return (
@@ -187,6 +198,36 @@ const DuressModePasswordSet = () => {
           </Card>
         </div>
       </div>
+
+      {/* Modal for saving progress and success */}
+      {showModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-md shadow-lg w-80 text-center">
+            {addDuress ? (
+              <div className="flex flex-col items-center">
+                <Loader2 className="w-6 h-6 animate-spin mb-4" />
+                <span>Saving your duress password...</span>
+              </div>
+            ) : isSuccess ? (
+              <div>
+                <span className="text-shadow-purple font-semibold mb-4">
+                  Duress password set successfully!
+                </span>
+                <a href="/dashboard">
+                <Button
+                  className="w-full bg-shadow-purple text-white hover:bg-shadow-purple-600"
+                >
+                  Go to Dashboard
+                </Button>
+                </a>
+              </div>
+            ) : (
+              <span className="text-red-500">Failed to set password.</span>
+            )}
+          </div>
+        </div>
+      )}
+
       <Footer />
     </>
   );
