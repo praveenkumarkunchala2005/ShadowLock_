@@ -32,10 +32,11 @@ import {
   setDoc,
   getDoc,
 } from "firebase/firestore";
-import { db } from "../Service/ firebase";
+import { db } from "../Service/firebase";
 import { useUser } from "@clerk/clerk-react";
 import DashboardNavbar from "@/components/DashboardNavbar";
 import Footer from "@/components/Footer";
+import { decrypt, encrypt } from "@/Service/crypto";
 
 const generateFakePassword = () => {
   const chars =
@@ -133,7 +134,6 @@ const DuressMode = () => {
       for (const item of originalData) {
         const docRef = doc(db, "credentials", item.id);
         const docSnap = await getDoc(docRef);
-
         if (docSnap.exists()) {
           await updateDoc(docRef, {
             ...item,
@@ -198,9 +198,7 @@ const DuressMode = () => {
       for (const docSnap of querySnapshot.docs) {
         const data = docSnap.data();
         originalData.push({ id: docSnap.id, ...data });
-
         const fakePassword = generateFakePassword();
-
         await updateDoc(doc(db, "credentials", docSnap.id), {
           password: fakePassword,
           duress: true,

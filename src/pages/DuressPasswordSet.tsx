@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
-import { db } from "../Service/ firebase";
+import { db } from "../Service/firebase";
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import {

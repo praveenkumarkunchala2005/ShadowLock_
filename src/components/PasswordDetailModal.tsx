@@ -103,7 +103,7 @@ const PasswordDetailModal = ({
                   style={{ fontFamily: 'monospace' }}
                   aria-label="Password"
                 >
-                  {showPassword ? password.password : '•'.repeat(password.password.length)}
+                  {showPassword ? password.password : '•'.repeat(8)}
                 </span>
                 <button
                   type="button"

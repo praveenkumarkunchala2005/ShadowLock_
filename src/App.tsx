@@ -14,7 +14,7 @@ import DuressModePasswordSet from "./pages/DuressPasswordSet";
 import { useUser } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "./Service/ firebase";
+import { db } from "./Service/firebase";
 import DuressMode from "./pages/DuressMode";
 
 const queryClient = new QueryClient();

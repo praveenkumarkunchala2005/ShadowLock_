@@ -12,8 +12,9 @@ import PasswordDetailModal from "@/components/PasswordDetailModal";
 import { useUser } from "@clerk/clerk-react";
 import { collection, query, where, onSnapshot, getDoc } from "firebase/firestore";
 import { doc, setDoc,deleteDoc,updateDoc } from "firebase/firestore";
-import { db } from "../Service/ firebase";
+import { db } from "../Service/firebase";
 import CryptoJS from "crypto-js";
+import { encrypt,decrypt } from "@/Service/crypto";
 
 type NewPassword = {
   title: string;
@@ -27,6 +28,8 @@ type NewPassword = {
 const Dashboard = () => {
   const { user, isLoaded, isSignedIn } = useUser()
   const [passwords, setPasswords] = useState([]);
+  const [isDuressSet, setIsDuressSet] = useState<string | null>(null)
+  const [duressMode, setDuressMode] = useState(false);
   //   () => {
   //   const savedPasswords = localStorage.getItem("shadowlock-passwords");
   //   return savedPasswords ? JSON.parse(savedPasswords) : [
@@ -35,8 +38,7 @@ const Dashboard = () => {
   //     { id: 3, title: "Netflix", username: "moviebuff", password: "Netflix789#", website: "https://netflix.com", category: "Entertainment" },
   //   ];
   // });
-  const [duressMode, setDuressMode] = useState(false);
-    useEffect(() => {
+  useEffect(() => {
       const checkDuress = async () => {
         if (!isSignedIn || !user) return;
         try {
@@ -45,57 +47,112 @@ const Dashboard = () => {
   
           if (docSnap.exists()) {
             const data = docSnap.data();
+            setIsDuressSet(data?.duressModePassword);
             setDuressMode(data?.duressMode || false);
           } else {
-            setDuressMode(false);
+            setIsDuressSet("");
           }
         } catch (error) {
           console.error("Error fetching duress password:", error);
-          setDuressMode(false);
+          setIsDuressSet("");
         }
       };
       checkDuress();
     }, [user, isSignedIn]);
-
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
+    // useEffect(() => {
+    //   const checkDuress = async () => {
+    //     if (!isSignedIn || !user) return;
+    //     try {
+    //       const docRef = doc(db, "users", user.id);
+    //       const docSnap = await getDoc(docRef);
   
-    const getData = async () => {
-      try {
-        if (!db) {
-          console.error("Firestore is not initialized.");
-          return;
-        }
-  
-        if (isLoaded && user) {
-          const userEmail = user.primaryEmailAddress?.emailAddress;
-  
-          if (userEmail) {
-            const q = query(
-              collection(db, "credentials"),
-              where("userEmail", "==", userEmail)
-            );
-            unsubscribe = onSnapshot(q, (querySnapshot) => {
-              const fetchedData = querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              }));
-              setPasswords(fetchedData);
-              console.log("UserData updated:", fetchedData);
-            });
+    //       if (docSnap.exists()) {
+    //         const data = docSnap.data();
+    //         setDuressMode(data?.duressMode || false);
+    //       } else {
+    //         setDuressMode(false);
+    //       }
+    //     } catch (error) {
+    //       console.error("Error fetching duress password:", error);
+    //       setDuressMode(false);
+    //     }
+    //   };
+    //   checkDuress();
+    // }, [user, isSignedIn]);
+    const decryptPasswords = async () => {
+      const updatedPasswords = await Promise.all(
+        passwords.map(async (password) => {
+          if (password.password) {
+            try {
+              if(password.password.split(':').length === 3){
+                const decryptedPassword = await decrypt(password.password, isDuressSet);
+                console.log("Decrypted password:", password.password);
+                return {
+                  ...password,
+                  password: decryptedPassword,
+                };
+              } else {
+                console.log("decryption no need");
+              }
+            } catch (error) {
+              console.error("Error decrypting password:", error);
+              return password;
+            }
           }
+          return password;
+        })
+      );
+      setPasswords(updatedPasswords); 
+    };
+    
+    
+    useEffect(() => {
+      let unsubscribe: (() => void) | undefined;
+    
+      const getData = async () => {
+        try {
+          if (!db) {
+            console.error("Firestore is not initialized.");
+            return;
+          }
+    
+          if (isLoaded && user) {
+            const userEmail = user.primaryEmailAddress?.emailAddress;
+    
+            if (userEmail) {
+              const q = query(
+                collection(db, "credentials"),
+                where("userEmail", "==", userEmail)
+              );
+              unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const fetchedData = querySnapshot.docs.map((doc) => ({
+                  id: doc.id,
+                  ...doc.data(),
+                }));
+                setPasswords(fetchedData);
+                console.log("UserData updated:", fetchedData);
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
         }
-      } catch (error) {
-        console.error("Error fetching data:", error);
+      };
+      getData();
+    
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+    }, [user, isLoaded]);
+    
+    useEffect(() => {
+      if (passwords.length > 0) {
+        decryptPasswords();
       }
-    };
-    getData();
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [user, isLoaded]);
+    }, [passwords]);
+    
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -141,13 +198,19 @@ const Dashboard = () => {
       id: docId,
     });
   };
-
-  const handleAddPassword = (newPassword) => {
+  const handleAddPassword = async (newPassword) => {
     setaddCredentialSave(true);
     const docId = Date.now().toString();
+  
     try {
-      savePassword(newPassword, docId, user.primaryEmailAddress?.emailAddress);
-      console.log("done succesfully");
+      // Wait for the password to be encrypted
+      const encryptedPassword = await encrypt(newPassword.password, isDuressSet);
+      newPassword.password = encryptedPassword;
+  
+      // Save to Firestore
+      await savePassword(newPassword, docId, user.primaryEmailAddress?.emailAddress);
+      console.log("done successfully");
+  
       toast({
         title: "Password Added",
         variant: "default",
@@ -157,22 +220,33 @@ const Dashboard = () => {
       toast({
         title: "Password Adding Failed",
         variant: "destructive",
-        description: `${newPassword.title} is failed to add.`,
+        description: `${newPassword.title} failed to add.`,
       });
       console.error("Error adding document: ", error);
     }
+  
     setaddCredentialSave(false);
     setIsAddOpen(false);
-    toast({
-      title: "Password Added",
-      description: `${newPassword.title} has been added to your vault.`,
-    });
   };
+  
 
   const handleEditPassword = async (updatedPassword) => {
     try {
+      const encrypted = await encrypt(updatedPassword.password, isDuressSet);
       const docRef = doc(db, "credentials", currentPassword.id);
-      await updateDoc(docRef, updatedPassword);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const oldData = docSnap.data();
+
+        const encrypted = await encrypt(updatedPassword.password, isDuressSet);
+
+        await updateDoc(docRef, {
+          ...oldData,
+          password: encrypted,
+          modifiedAt: new Date(),
+        });
+      }
       toast({
         title: "Password Updated",
         description: `${updatedPassword.title} has been updated.`,
@@ -457,7 +531,7 @@ const Dashboard = () => {
         open={isDetailOpen}
         onOpenChange={open => setIsDetailOpen(open)}
         password={detailPassword}
-        isReused={detailPassword ? isPasswordReused(detailPassword) : false}
+        isReused={detailPassword ? isPasswordReused(detailPassword) : true}
         isBreached={isBreached}
       />
     </div>
